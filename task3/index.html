@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Echo WebSocket Chat</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+      }
+
+      #chat {
+        max-width: 400px;
+        margin: 0 auto;
+        padding: 20px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+
+      #messages {
+        margin-bottom: 10px;
+      }
+
+      .message {
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+      }
+
+      .sent {
+        background-color: #dff9fb;
+        align-self: flex-end;
+      }
+
+      .received {
+        background-color: #f4f4f4;
+        align-self: flex-start;
+      }
+
+      #messageInput {
+        width: 100%;
+        padding: 5px;
+        margin-bottom: 10px;
+      }
+
+      #sendButton,
+      #locationButton {
+        display: block;
+        width: 100%;
+        padding: 10px;
+        background-color: #4caf50;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+
+      #sendButton:hover,
+      #locationButton:hover {
+        background-color: #45a049;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="chat">
+      <div id="messages"></div>
+      <input type="text" id="messageInput" placeholder="Type a message..." />
+      <button id="sendButton">Send</button>
+      <button id="locationButton">Geolocation</button>
+    </div>
+
+    <script>
+      const socket = new WebSocket("wss://echo-ws-service.herokuapp.com");
+
+      const messagesDiv = document.getElementById("messages");
+      const messageInput = document.getElementById("messageInput");
+      const sendButton = document.getElementById("sendButton");
+      const locationButton = document.getElementById("locationButton");
+
+      socket.onopen = () => {
+        console.log("WebSocket connection established.");
+      };
+
+      socket.onmessage = (event) => {
+        const message = event.data;
+        if (!message.startsWith("My location:")) {
+          displayMessage(message, "received");
+        }
+      };
+
+      function displayMessage(message, type) {
+        const messageElement = document.createElement("div");
+        messageElement.innerHTML = message;
+        messageElement.classList.add("message", type);
+
+        messagesDiv.appendChild(messageElement);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
+
+      sendButton.addEventListener("click", () => {
+        const message = messageInput.value;
+        if (message) {
+          socket.send(message);
+          displayMessage(message, "sent");
+          messageInput.value = "";
+        }
+      });
+
+      messageInput.addEventListener("keyup", (event) => {
+        if (event.key === "Enter") {
+          sendButton.click();
+        }
+      });
+
+      locationButton.addEventListener("click", () => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition((position) => {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+            const locationUrl = `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}&zoom=15`;
+
+            const locationMessage = `My location: <a href="${locationUrl}" target="_blank">${locationUrl}</a>`;
+            displayMessage(locationMessage, "sent");
+            socket.send(locationMessage);
+          });
+        } else {
+          alert("Geolocation is not supported by your browser.");
+        }
+      });
+    </script>
+  </body>
+</html>
